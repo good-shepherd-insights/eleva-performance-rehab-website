@@ -1,7 +1,6 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import InlinePreviewBootstrap from "./InlinePreviewBootstrap.astro";
-import { getRelativeLocaleUrl } from "astro:i18n";
 import { getSiteGlobals, cmsOrigin as payloadURL, globalSlug as payloadGlobalSlug, type Page } from "../lib/payload";
 import { getLocales } from "../lib/locales";
 
@@ -12,14 +11,8 @@ interface Props {
 }
 
 const { locale, page: content } = Astro.props;
-const [site, locales] = await Promise.all([getSiteGlobals(locale), getLocales()]);
+const [site] = await Promise.all([getSiteGlobals(locale), getLocales()]);
 const title = content.metadata.titleTemplate.replace("{title}", content.title);
-const homeHref = getRelativeLocaleUrl(locale);
-const otherLocales = locales.filter((entry) => entry.code !== locale).map((entry) => ({
-  code: entry.code,
-  label: entry.label,
-  href: content.slug === "home" ? getRelativeLocaleUrl(entry.code) : `${getRelativeLocaleUrl(entry.code)}${content.slug}`,
-}));
 const skipToContentLabel = site.accessibility.skipToContentLabel ?? "";
 const siteOrigin = Astro.site ?? Astro.url;
 const canonicalURL = new URL(Astro.url.pathname, siteOrigin);
