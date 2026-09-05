@@ -17,10 +17,11 @@ This repository contains the public website only.
 
 The separate Payload CMS supplies:
 
-1. Page content — site chrome (the configured site global, `SITE_GLOBAL_SLUG`)
-   plus per-page sections (`pages` collection).
+1. Page content — the site shell (the configured site global,
+   `SITE_GLOBAL_SLUG`: brand, accessibility labels, components) plus
+   per-page sections (`pages` collection).
 2. Media records and image metadata.
-3. Localized navigation.
+3. Localized shell labels.
 4. Live preview data.
 5. The favicon.
 
@@ -44,16 +45,16 @@ The separate Payload CMS supplies:
    the template ships no per-section presentational components; each project
    authors its own.
 6. `src/lib/payload.ts` is the CMS boundary, with two distinct fetch shapes:
-   `getSiteGlobals()` fetches only site chrome from the configured site
+   `getSiteGlobals()` fetches the site shell from the configured site
    global
    (`SITE_GLOBAL_SLUG`); `getPage()` /
    `getPages()` fetch page content (the page's `sections` blocks) from the
    `pages` collection. Both normalize Payload's
    relative media URLs to absolute.
-7. Every section `blockType` is validated in exactly one place —
-   `isCompletePage()` and `hasLocalizedPageData()` in `payload.ts`, one
-   branch per blockType. Section rendering is data-driven (a `<section>`
-   per block carrying its type and inline-edit/live-sync markers), not a
+7. Page validation is structural only — `isCompletePage()` and
+   `hasLocalizedPageData()` in `payload.ts`. Section rendering is data-driven
+   (a `<section>`
+   per block), not a
    per-blockType component switch.
 8. `src/lib/inline-preview.ts` runs when the page is embedded inside Payload's
    Live Preview iframe or popup.
@@ -79,19 +80,19 @@ End-to-end data flow, one direction, no branch skipped:
    thing: resolve which `Page` to fetch, fetch it via `getPage()`, hand it
    to `PageView.astro`. No page-assembly logic belongs in these files.
 3. **`payload.ts` is the only place that talks to Payload.** Two shapes:
-   `getSiteGlobals()` → `SiteGlobals` (global, chrome only); `getPage()` /
+   `getSiteGlobals()` → `SiteGlobals` (site shell); `getPage()` /
    `getPages()` → `Page` (collection, per-page `sections` blocks). Both
-   validate before returning (`isCompletePage`, `hasLocalizedPageData`,
-   one branch per blockType) and absolutize Payload's relative media URLs.
+   validate structurally (`isCompletePage`, `hasLocalizedPageData`) and
+   absolutize Payload's relative media URLs generically at any depth.
 4. **`PageView.astro` assembles the page**, for every slug and both
-   locales: fetches `SiteGlobals` itself (nav/footer/brand), resolves
-   locale-alternate links, and walks `page.sections` rendering one neutral
-   `<section>` per block with its type and inline-edit/live-sync markers.
+   locales: fetches `SiteGlobals` itself (brand/accessibility), and walks
+   `page.sections` rendering one neutral `<section>` per block.
    Presentation per section type is authored by each project, not shipped.
 5. **`InlinePreviewBootstrap.astro`** wires the rendered page to
    `src/lib/inline-preview.ts` when embedded in Payload's Live Preview
-   iframe/popup, using the `data-inline-edit` / `data-live-sync-*`
-   attributes each rendered section carries.
+   iframe/popup. Editable/sync attributes are carried by the markup each
+   project's own components render; the bridge resolves global paths
+   (`brand.*`, `accessibility.*`) against the site global.
 6. **`Layout.astro`** renders shared `<head>` concerns — metadata,
    favicon, locale alternates, and (intended, currently broken per the
    gap above) the JSON-LD graph from `src/lib/seo/`.
@@ -110,27 +111,23 @@ Content is split across two Payload sources, both mirrored by types in
 data instead of embedding editable copy or media paths directly.
 
 **Site global** (slug from `SITE_GLOBAL_SLUG`, mirrored as `SiteGlobals`) —
-site-wide chrome, shared by every
+site shell, shared by every
 page:
 
 1. Brand logo, favicon, and alt text.
-2. Navigation items with `link` and `cta` variants.
-3. Accessibility labels.
-4. Footer tagline, links, and note.
+2. Accessibility shell labels.
+3. `components` — an open blocks field; the block kinds a project registers
+   in its own CMS copy.
 
 **`pages` collection (`Page`, one document per slug)** — per-page content,
-as an ordered `sections` array of typed blocks:
+as a `sections` array of tenant-defined blocks:
 
-1. Banner labels and links, and a metadata title template (per page).
-2. `hero` — content, media, captions, CTAs — plus its `process` steps.
-3. `highlights` items.
-4. `content`, `mediaFeature`, `itemList`, `quote`, `callToAction` — each its
-   own blockType.
+1. A metadata title template (per page).
+2. `sections` — whatever block kinds the project registered.
 
-The `SiteGlobals` type in `payload.ts` mirrors the CMS site global's chrome
-fields, and the `Page.sections` union carries one member per blockType —
-neither is itself the shape of any single Payload response beyond what the
-page consumes.
+The `SiteGlobals` type in `payload.ts` mirrors the CMS site global's shell
+fields, and `PageSection` is a generic block (`blockType` + arbitrary
+tenant-defined fields) — neither is the shape of a predefined section set.
 
 ## Live Preview
 

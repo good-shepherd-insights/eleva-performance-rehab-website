@@ -15,8 +15,8 @@ environment contract documented below.
 ## Repository scope
 
 This repository contains the public website only. The Payload CMS is maintained
-separately and supplies page content (site chrome plus per-page sections),
-media, localized navigation, live preview data, and the favicon.
+separately and supplies page content (the site shell plus per-page sections),
+media, localized shell labels, live preview data, and the favicon.
 
 The site has localized homepage routes — `/` for the CMS-configured default
 locale and `/<locale>/` for every other CMS-discovered locale.
@@ -41,18 +41,16 @@ hand it to `PageView.astro`; keep them thin, don't grow page-assembly logic
 back into them.
 
 `src/lib/payload.ts` is the CMS boundary and has two fetch shapes, not one:
-`getSiteGlobals()` fetches only site chrome from the configured site global
+`getSiteGlobals()` fetches the site shell from the configured site global
 (`SITE_GLOBAL_SLUG`);
 `getPage()`/`getPages()` fetch page
 content (the page's `sections` blocks) from the `pages`
-collection. Every `Page` blockType is checked in exactly one place —
-`isCompletePage()` and `hasLocalizedPageData()` in `payload.ts`, one branch
-per blockType. Extend those validators for a new section type; do not add a
-second, parallel validation/fetch path for it.
+collection. Page validation is structural only — `isCompletePage()` and
+`hasLocalizedPageData()` in `payload.ts`. Sections are tenant-defined blocks;
+extend nothing per block kind in this repo.
 
-`src/styles/global.css` is the frontend design-system source of truth for
-layout, typography, color tokens, responsive behavior, and interaction
-states. `src/lib/seo/` builds a JSON-LD graph (`buildSiteGraph`,
+`src/styles/global.css` ships only a base reset — each project authors its
+own design system. `src/lib/seo/` builds a JSON-LD graph (`buildSiteGraph`,
 `schemaGraph.ts`) meant to render in `src/layouts/Layout.astro` — see
 [`docs/seo-plumbing.md`](docs/seo-plumbing.md) for the field map. **Known
 gap, verified in source:** `PageView.astro` currently hardcodes
@@ -62,9 +60,8 @@ right now. Not fixed here — flagged so it isn't mistaken for "already
 wired up," and so a fix doesn't get bundled into an unrelated ticket.
 
 Content belongs in Payload. Components should render CMS data and should not
-reintroduce page copy, navigation labels, media URLs, or branding as scattered
-hardcoded values. Navigation is repeatable CMS data with `link` and `cta`
-variants; CTA styling is selected from the item type.
+reintroduce page copy, media URLs, or branding as scattered
+hardcoded values.
 
 ## Local development
 

@@ -10,28 +10,33 @@ orphaned frontend fields without a CMS source, no CMS fields nothing reads.
 | Output | Source | Owner |
 |---|---|---|
 | `<title>` | `metadata.titleTemplate` with `{title}` replaced by `page.title` | Payload: Page.metadata.titleTemplate, Page.title |
-| meta description / og:description / twitter:description | `hero.subhead` | Payload: Page (first hero section).hero.subhead |
 | canonical / og:url | computed from `astro.config.mjs`'s `site` + current route path | Frontend (routing, not content) |
 | hreflang alternates (x-default + one per locale) | `astro:i18n`'s `getAbsoluteLocaleUrlList()`/`toCodes()`, reading `i18n` from `astro:config/client` — no locale ever hardcoded here, see "Locale discovery" below for where that config value actually comes from | Frontend (routing, not content) |
 | og:title / twitter:title | same as `<title>` | Payload (see title row) |
-| og:image / twitter:image | `hero.image.url` (absolutized against `CMS_ORIGIN`) | Payload: Page (first hero section).hero.image |
-| og:image:alt / twitter:imageAlt | `hero.imageAlt` | Payload: Page (first hero section).hero.imageAlt |
 | favicon | `brand.favicon.url` | Payload: SiteGlobals.brand.favicon |
 | robots meta | always `index, follow` (astro-seo default; no noindex/nofollow set anywhere) | Frontend (policy, not content) |
+
+**Gap:** description and social-image rows previously mapped to
+`hero.subhead`/`hero.image`/`footer.tagline` — fields that belonged to the
+removed tenant section set and exist in neither schema. `PageView.astro`
+passes `page.title` as the description and the brand logo as the social
+image; when a project registers its own blocks it should map its own
+description/social-image fields here.
 
 ## JSON-LD graph (src/lib/seo/*.ts, rendered in Layout.astro)
 
 | Node | Field | Source | Owner |
 |---|---|---|---|
 | WebSite | name | `brand.logoAlt` | Payload: SiteGlobals.brand.logoAlt |
-| WebSite | description | `hero.subhead` | Payload: Page (first hero section).hero.subhead |
 | WebSite | url | site origin | Frontend |
 | Organization | name | `brand.logoAlt` | Payload: SiteGlobals.brand.logoAlt |
-| Organization | description | `footer.tagline` | Payload: SiteGlobals.footer.tagline |
 | Organization | logo | `brand.logo.url` + width/height | Payload: SiteGlobals.brand.logo |
 | WebPage | name | page title (see metadata table) | Payload (see title row) |
-| WebPage | description | `hero.subhead` | Payload: Page (first hero section).hero.subhead |
 | WebPage | url / inLanguage | computed | Frontend (routing) |
+
+**Gap:** the WebSite/Organization/WebPage `description` fields previously
+sourced `hero.subhead`/`footer.tagline` (removed tenant fields); the
+builders currently emit no description until a project supplies its own.
 
 No BreadcrumbList — this site has one route per locale (the home page
 itself), and the skill explicitly exempts the home page from needing one.
@@ -67,25 +72,23 @@ manually maintained array.
    index.astro` — `prefixDefaultLocale:false` means `/` is unprefixed, which
    a generic `[locale]`-prefixed route can't produce, so that one file is an
    intentional, permanent exception, not leftover hardcoding.
-4. **`src/components/Nav.astro`'s language switcher** — `otherLocales` is
-   computed once in `PageView.astro` (`getLocales()` in
-   `src/lib/locales.ts`, same `/api/locales` endpoint) and passed down as a
-   prop; Nav renders one link per entry via `.map()`, hrefs via
-   `getRelativeLocaleUrl`. No per-locale branching anywhere in either
-   file — adding a locale in Payload adds a switcher link automatically.
+4. **`src/lib/locales.ts` / `getLocales()`** — the runtime counterpart of
+   the same `/api/locales` endpoint (same fetch, same source). There is no
+   shipped language-switcher UI; a project building its own nav should
+   compute its locale links from `getLocales()` + Astro's
+   `getRelativeLocaleUrl` — no per-locale branching is needed anywhere.
 
-### Nav's three CMS-sourced UI strings
+### Accessibility labels (CMS-sourced UI strings)
 
 `accessibility.skipToContentLabel`, `accessibility.menuLabel`, and
 `accessibility.languageSwitchAriaLabelTemplate` (this last one contains a
 literal `{language}` placeholder, replaced with the target locale's own
 `label` from `/api/locales`) are real `localized: true` Payload fields on
-the site global — not frontend ternaries. `Nav.astro`/`PageView.astro` read
-them with a single non-branching `?? "default text"` fallback for the
-(optional) label fields only;
-every real API response already has a value, translated or Payload's own
-automatic default-locale fallback (`localization.fallback: true`, Payload's
-own default) for locales not yet translated.
+the site global — not frontend constants. `PageView.astro` renders the skip
+link with an empty-string fallback for the optional label; every real API
+response already has a value, translated or Payload's own automatic
+default-locale fallback (`localization.fallback: true`, Payload's own
+default) for locales not yet translated.
 
 ## Content/data gaps — fields that don't exist in Payload yet
 
@@ -95,14 +98,12 @@ them the moment the field exists; until then they're correctly omitted
 fabricating placeholder values, per the skill: "do not fabricate
 content-specific facts in code").
 
-- **Dedicated social-share image.** Currently `hero.image` is reused for
+- **Dedicated social-share image.** Currently the brand logo is used for
   og:image/twitter:image. A `metadata.socialImage` field on the Payload
-  site global (same `Media` upload shape as `hero.image`) would let
-  an editor pick a purpose-built share image without changing the hero
-  photo. Wiring change needed if added: swap `page.hero.image.url` /
-  `page.hero.imageAlt` for `page.metadata.socialImage.url` /
-  `page.metadata.socialImage.alt` in `src/components/PageView.astro`
-  (falls back to `hero.image` if the new field is empty).
+  site global (same `Media` upload shape as any project image) would let
+  an editor pick a purpose-built share image without changing page content.
+  Wiring change needed if added: swap the social-image source in
+  `src/components/PageView.astro`.
 - **Organization address / contact / social profiles (`sameAs`).** No
   fields exist in the site global for a mailing address, phone, email, or
   social media profile URLs. Adding an `organization` group (address
