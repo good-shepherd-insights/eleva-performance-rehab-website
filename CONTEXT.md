@@ -39,26 +39,25 @@ The separate Payload CMS supplies:
    existing gap, not a documented design decision; do not assume it is
    intentional.
 5. `src/components/PageView.astro` is the shared page assembly for every
-   page (home and non-home alike), for both locales. It dispatches each
-   entry in a page's `sections` array by `blockType`.
-   `src/components/PageView.astro` (shared assembly) and
-   `src/pages/[locale]/[slug].astro`
-   are thin entrypoints that fetch a `Page` and hand it to `PageView.astro`.
+   page (home and non-home alike), for both locales. It walks the page's
+   `sections` array and renders each section as neutral semantic markup —
+   the template ships no per-section presentational components; each project
+   authors its own.
 6. `src/lib/payload.ts` is the CMS boundary, with two distinct fetch shapes:
-   `getSiteGlobals()` fetches only site chrome (`brand`, `nav`,
-   `accessibility`, `footer`) from the configured site global
+   `getSiteGlobals()` fetches only site chrome from the configured site
+   global
    (`SITE_GLOBAL_SLUG`); `getPage()` /
-   `getPages()` fetch page content (hero, about, course, and every other
-   section) from the `pages` collection. Both normalize Payload's
+   `getPages()` fetch page content (the page's `sections` blocks) from the
+   `pages` collection. Both normalize Payload's
    relative media URLs to absolute.
 7. Every section `blockType` is validated in exactly one place —
    `isCompletePage()` and `hasLocalizedPageData()` in `payload.ts`, one
-   branch per blockType — plus one render case in `PageView.astro`. A new
-   section type extends those three switches; it does not get its own
-   parallel validation, fetch, or view mechanism.
+   branch per blockType. Section rendering is data-driven (a `<section>`
+   per block carrying its type and inline-edit/live-sync markers), not a
+   per-blockType component switch.
 8. `src/lib/inline-preview.ts` runs when the page is embedded inside Payload's
    Live Preview iframe or popup.
-9. **Known gap, verified in source (`src/components/PageView.astro:45`):**
+9. **Known gap, verified in source (`src/components/PageView.astro`):**
    `jsonLd={{}}` is hardcoded for every page, home included.
    `buildSiteGraph` (`src/lib/seo/schemaGraph.ts`) exists but is never
    called from any `.astro` file (grep-verified) — every rendered page
@@ -86,28 +85,23 @@ End-to-end data flow, one direction, no branch skipped:
    one branch per blockType) and absolutize Payload's relative media URLs.
 4. **`PageView.astro` assembles the page**, for every slug and both
    locales: fetches `SiteGlobals` itself (nav/footer/brand), resolves
-   locale-alternate links, renders `Banner`/`Nav`/`Footer`, and walks
-   `page.sections` dispatching one component per `blockType`
-   (`Hero`, `Highlights`, `Content`, `MediaFeature`, `ItemList`, `Quote`,
-   `CallToAction`). A new section type is a new branch here, in
-   `isCompletePage`, and in `hasLocalizedPageData` — three switches, not a
-   parallel mechanism.
+   locale-alternate links, and walks `page.sections` rendering one neutral
+   `<section>` per block with its type and inline-edit/live-sync markers.
+   Presentation per section type is authored by each project, not shipped.
 5. **`InlinePreviewBootstrap.astro`** wires the rendered page to
    `src/lib/inline-preview.ts` when embedded in Payload's Live Preview
-   iframe/popup, using the `data-inline-edit` / `data-live-sync-bg` /
-   `data-live-sync-alt` attributes each section component sets.
+   iframe/popup, using the `data-inline-edit` / `data-live-sync-*`
+   attributes each rendered section carries.
 6. **`Layout.astro`** renders shared `<head>` concerns — metadata,
    favicon, locale alternates, and (intended, currently broken per the
    gap above) the JSON-LD graph from `src/lib/seo/`.
 7. **`@astrojs/sitemap`** (astro.config.mjs) generates the sitemap from
    Astro's own route list at build time, independent of steps 3–6.
 
-## Design System
+## Styles
 
-1. `src/styles/global.css` is the design-system source of truth.
-2. Existing semantic class names should be preserved.
-3. Semantic design tokens should be extended before adding one-off colors or
-   spacing rules.
+1. `src/styles/global.css` ships only a base reset — no design system, no
+   component classes, no palette. Each project authors its own presentation.
 
 ## Content Model
 

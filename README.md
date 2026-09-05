@@ -32,22 +32,23 @@ of an unrelated change; it needs its own scoped ticket.
 
 `src/components/PageView.astro` is the shared page assembly used for every
 page — home and every other CMS-authored page — for both locales. It walks
-a page's `sections` array and dispatches each block by `blockType`.
-`src/components/PageView.astro` and `src/pages/[locale]/[slug].astro`
+a page's `sections` array and renders each section as neutral semantic
+markup carrying its type and inline-edit/live-sync markers; the template
+ships no per-section presentational components, so each project authors its
+own. `src/components/PageView.astro` and `src/pages/[locale]/[slug].astro`
 are thin entrypoints that fetch one `Page` via `getPage()`/`getPages()` and
 hand it to `PageView.astro`; keep them thin, don't grow page-assembly logic
 back into them.
 
 `src/lib/payload.ts` is the CMS boundary and has two fetch shapes, not one:
-`getSiteGlobals()` fetches only site chrome (`brand`, `nav`, `accessibility`,
-`footer`) from the configured site global (`SITE_GLOBAL_SLUG`);
+`getSiteGlobals()` fetches only site chrome from the configured site global
+(`SITE_GLOBAL_SLUG`);
 `getPage()`/`getPages()` fetch page
-content (hero, highlights, content, and every other section) from the `pages`
+content (the page's `sections` blocks) from the `pages`
 collection. Every `Page` blockType is checked in exactly one place —
 `isCompletePage()` and `hasLocalizedPageData()` in `payload.ts`, one branch
-per blockType — plus one render case in `PageView.astro`. Extend those three
-switches for a new section type; do not add a second, parallel
-validation/fetch/render path for it.
+per blockType. Extend those validators for a new section type; do not add a
+second, parallel validation/fetch path for it.
 
 `src/styles/global.css` is the frontend design-system source of truth for
 layout, typography, color tokens, responsive behavior, and interaction
@@ -97,8 +98,9 @@ be verified against each configured locale's API responses.
 
 ## Contributor guardrails
 
-- Preserve the shared component architecture and existing semantic class names.
-- Extend semantic design tokens before adding one-off colors or spacing rules.
+- Preserve the shared page-assembly and CMS-boundary architecture; the
+  template ships no presentation layer, so projects author their own styles
+  and components.
 - Treat Payload as the source of truth for editable content and media.
 - Do not commit `.env` files, local databases, uploaded media, dependencies, or
   generated build output.
