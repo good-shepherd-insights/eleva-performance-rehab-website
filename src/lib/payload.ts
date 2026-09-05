@@ -9,6 +9,10 @@ export interface Media {
   height: number;
 }
 
+export interface CuratedComponent {
+  component: PageSection[];
+}
+
 export interface SiteGlobals {
   brand: { logo: Media; logoAlt: string; favicon: Media };
   accessibility: {
@@ -18,7 +22,7 @@ export interface SiteGlobals {
     menuLabel?: string | null;
     languageSwitchAriaLabelTemplate?: string | null;
   };
-  components: PageSection[];
+  components: CuratedComponent[];
 }
 
 export type PageSection = {
@@ -58,12 +62,17 @@ function absolutizeSiteChromeUrls(page: SiteGlobals): SiteGlobals {
   // Payload returns media `url` as a path relative to its own origin.
   page.brand.logo.url = new URL(page.brand.logo.url, cmsOrigin).toString();
   page.brand.favicon.url = new URL(page.brand.favicon.url, cmsOrigin).toString();
+  for (const curated of page.components ?? []) {
+    for (const section of curated.component ?? []) {
+      absolutizeMediaUrls(section);
+    }
+  }
   return page;
 }
 
 export async function getSiteGlobals(locale: string): Promise<SiteGlobals> {
   const res = await fetch(
-    `${cmsOrigin}/api/globals/${globalSlug}?depth=1&locale=${locale}`,
+    `${cmsOrigin}/api/globals/${globalSlug}?depth=2&locale=${locale}`,
   );
 
   if (!res.ok) {

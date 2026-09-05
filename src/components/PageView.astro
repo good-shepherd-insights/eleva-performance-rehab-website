@@ -1,7 +1,7 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import InlinePreviewBootstrap from "./InlinePreviewBootstrap.astro";
-import { getSiteGlobals, cmsOrigin as payloadURL, globalSlug as payloadGlobalSlug, type Page } from "../lib/payload";
+import { getSiteGlobals, cmsOrigin as payloadURL, globalSlug as payloadGlobalSlug, type Page, type PageSection } from "../lib/payload";
 
 interface Props {
   locale: string;
@@ -13,11 +13,19 @@ const { locale, page: content } = Astro.props;
 const site = await getSiteGlobals(locale);
 const title = content.metadata.titleTemplate.replace("{title}", content.title);
 const skipToContentLabel = site.accessibility.skipToContentLabel ?? "";
+const globalComponents = (site.components ?? []).map((curated) => curated.component ?? []).filter((sections) => sections.length > 0);
 ---
 
 <Layout title={title} description={content.title} locale={locale} favicon={site.brand.favicon.url} image={site.brand.logo.url} imageAlt={site.brand.logoAlt} jsonLd={{}}>
   <div data-inline-preview-root data-payload-server-url={payloadURL} data-payload-global-slug={payloadGlobalSlug} data-payload-collection="pages" data-payload-id={content.id} data-locale={locale}>
     {skipToContentLabel && <a class="skip-link" href="#main-content">{skipToContentLabel}</a>}
+    {globalComponents.map((sections, componentIndex) => (
+      sections.map((section: PageSection, sectionIndex: number) => (
+        <section data-component={componentIndex} data-section={section.blockType} data-section-index={sectionIndex}>
+          {section.blockType}
+        </section>
+      ))
+    ))}
     <main id="main-content" tabindex="-1">
       {content.sections.map((section, index) => (
         <section data-section={section.blockType} data-section-index={index}>

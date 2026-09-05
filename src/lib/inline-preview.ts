@@ -72,7 +72,9 @@ export function initInlinePreview({ serverURL, initialData, locale, globalSlug, 
   let unsavedPagePreview = false;
   const saveTimers = new Map<string, number>();
   const isGlobalPath = (path: string) => /^(brand|accessibility)\./.test(path);
-  const getLiveValue = (path: string) => getPath(isGlobalPath(path) && globalData ? globalData : liveData, path);
+  // Sections belong to the page; everything else (brand, accessibility,
+  // components) resolves against the site global's data.
+  const getLiveValue = (path: string) => getPath(isGlobalPath(path) || !path.startsWith("sections.") ? globalData ?? liveData : liveData, path);
 
   const patchDOM = () => {
     document.querySelectorAll<HTMLElement>("[data-inline-edit]").forEach((el) => {
@@ -151,14 +153,18 @@ export function initInlinePreview({ serverURL, initialData, locale, globalSlug, 
   const saveField = async (path: string, value: string) => {
     if (collection === "pages" && (unsavedPagePreview || !id)) return;
     const parentWindow = window.parent !== window ? window.parent : window.opener;
-    if (!isGlobalPath(path)) parentWindow?.postMessage({ type: "payload-inline-edit", path, value }, resolvedServerURL);
+    // Sections of the page mirror into the admin sidebar form; global-owned
+    // fields (brand, accessibility, components) don't.
+    if (!isGlobalPath(path) && path.startsWith("sections.")) parentWindow?.postMessage({ type: "payload-inline-edit", path, value }, resolvedServerURL);
 
-    const endpoint = isGlobalPath(path)
-      ? `/api/globals/${globalSlug}`
-      : collection === "pages" && id
-      ? `/api/pages/${id}`
+    // Components are curated on the site global, so component-owned paths
+    // save to the global, not the page.
+    const endpoint = path.startsWith("sections.")
+      ? collection === "pages" && id
+        ? `/api/pages/${id}`
+        : `/api/globals/${globalSlug}`
       : `/api/globals/${globalSlug}`;
-    const source = isGlobalPath(path) && globalData ? globalData : liveData;
+    const source = path.startsWith("sections.") && !(isGlobalPath(path) && globalData) ? liveData : globalData ?? liveData;
     const response = await fetch(
       `${resolvedServerURL}${endpoint}?draft=true&autosave=true&locale=${locale}`,
       {
