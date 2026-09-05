@@ -1,6 +1,7 @@
 // Mirrors SiteGlobals / Pages from the Payload backend's generated
-// payload-types.ts, narrowed to what the page consumes. Fetched with
-// depth=1 so image/photo resolve to full Media.
+// payload-types.ts, narrowed to what the page consumes. getSiteGlobals
+// fetches with depth=2 so curated component relationships resolve to their
+// full documents (with nested media at full depth).
 
 export interface Media {
   url: string;
@@ -9,8 +10,16 @@ export interface Media {
   height: number;
 }
 
-export interface CuratedComponent {
-  component: PageSection[];
+// A curated entry resolves (depth=2) to the full Components document;
+// `sections` is the renderable content inside it.
+export type CuratedComponent = {
+  component: { sections?: PageSection[] | null } | number | null;
+};
+
+function curatedSections(entry: CuratedComponent): PageSection[] {
+  const resolved = entry.component;
+  if (!resolved || typeof resolved !== "object") return [];
+  return resolved.sections ?? [];
 }
 
 export interface SiteGlobals {
@@ -62,8 +71,8 @@ function absolutizeSiteChromeUrls(page: SiteGlobals): SiteGlobals {
   // Payload returns media `url` as a path relative to its own origin.
   page.brand.logo.url = new URL(page.brand.logo.url, cmsOrigin).toString();
   page.brand.favicon.url = new URL(page.brand.favicon.url, cmsOrigin).toString();
-  for (const curated of page.components ?? []) {
-    for (const section of curated.component ?? []) {
+  for (const entry of page.components ?? []) {
+    for (const section of curatedSections(entry)) {
       absolutizeMediaUrls(section);
     }
   }

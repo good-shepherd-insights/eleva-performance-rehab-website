@@ -74,7 +74,12 @@ export function initInlinePreview({ serverURL, initialData, locale, globalSlug, 
   const isGlobalPath = (path: string) => /^(brand|accessibility)\./.test(path);
   // Sections belong to the page; everything else (brand, accessibility,
   // components) resolves against the site global's data.
-  const getLiveValue = (path: string) => getPath(isGlobalPath(path) || !path.startsWith("sections.") ? globalData ?? liveData : liveData, path);
+  const globalFor = (path: string) => (isGlobalPath(path) || !path.startsWith("sections.") ? globalData ?? liveData : liveData);
+  // Curated component paths (components.N.component.M.<field>) traverse the
+  // resolved Components document, so they must skip its `component` wrapper:
+  // the document itself sits at components.N, its fields live at components.N.<field>.
+  const unwrapComponentPath = (path: string) => path.replace(/^components\.(\d+)\.component\.(\d+)\./, "components.$1.sections.$2.");
+  const getLiveValue = (path: string) => getPath(globalFor(path), unwrapComponentPath(path));
 
   const patchDOM = () => {
     document.querySelectorAll<HTMLElement>("[data-inline-edit]").forEach((el) => {
@@ -158,20 +163,23 @@ export function initInlinePreview({ serverURL, initialData, locale, globalSlug, 
     if (!isGlobalPath(path) && path.startsWith("sections.")) parentWindow?.postMessage({ type: "payload-inline-edit", path, value }, resolvedServerURL);
 
     // Components are curated on the site global, so component-owned paths
-    // save to the global, not the page.
-    const endpoint = path.startsWith("sections.")
+    // save to the global, not the page. Save payload paths must match the
+    // CMS document shape: unwrap the resolved document's `component` wrapper
+    // (components.N.component.M.<field> → components.N.sections.M.<field>).
+    const savePath = unwrapComponentPath(path);
+    const endpoint = savePath.startsWith("sections.")
       ? collection === "pages" && id
         ? `/api/pages/${id}`
         : `/api/globals/${globalSlug}`
       : `/api/globals/${globalSlug}`;
-    const source = path.startsWith("sections.") && !(isGlobalPath(path) && globalData) ? liveData : globalData ?? liveData;
+    const source = savePath.startsWith("sections.") && !isGlobalPath(savePath) ? liveData : globalData ?? liveData;
     const response = await fetch(
       `${resolvedServerURL}${endpoint}?draft=true&autosave=true&locale=${locale}`,
       {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildSavePayload(source, path, value)),
+        body: JSON.stringify(buildSavePayload(source, savePath, value)),
       },
     );
 
