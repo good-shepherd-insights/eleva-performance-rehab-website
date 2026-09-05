@@ -116,8 +116,14 @@ page:
 
 1. Brand logo, favicon, and alt text.
 2. Accessibility shell labels.
-3. `components` — an open blocks field; the block kinds a project registers
-   in its own CMS copy.
+3. `components` — an ordered curation list of `components` collection
+   documents; each resolves to that document's `sections` blocks and
+   renders globally on every page, in this order.
+
+**`components` collection (`CuratedComponent`)** — reusable component
+documents (unique slug + title), each holding a `sections` array of
+tenant-defined blocks; fetched depth-resolved through the site global's
+curation.
 
 **`pages` collection (`Page`, one document per slug)** — per-page content,
 as a `sections` array of tenant-defined blocks:

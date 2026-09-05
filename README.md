@@ -15,8 +15,9 @@ environment contract documented below.
 ## Repository scope
 
 This repository contains the public website only. The Payload CMS is maintained
-separately and supplies page content (the site shell plus per-page sections),
-media, localized shell labels, live preview data, and the favicon.
+separately and supplies page content (the site shell plus per-page sections
+and curated global components), media, localized shell labels, live preview
+data, and the favicon.
 
 The site has localized homepage routes — `/` for the CMS-configured default
 locale and `/<locale>/` for every other CMS-discovered locale.
@@ -42,7 +43,9 @@ hand it to `PageView.astro`; keep them thin, don't grow page-assembly logic
 back into them.
 
 `src/lib/payload.ts` is the CMS boundary and has two fetch shapes, not one:
-`getSiteGlobals()` fetches the site shell from the configured site global
+`getSiteGlobals()` fetches the site shell — brand, accessibility labels, and
+the ordered `components` curation (each entry depth-resolved to its
+component document's `sections`) — from the configured site global
 (`SITE_GLOBAL_SLUG`);
 `getPage()`/`getPages()` fetch page
 content (the page's `sections` blocks) from the `pages`
