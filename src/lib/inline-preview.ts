@@ -75,10 +75,12 @@ export function initInlinePreview({ serverURL, initialData, locale, globalSlug, 
   // Sections belong to the page; everything else (brand, accessibility,
   // components) resolves against the site global's data.
   const globalFor = (path: string) => (isGlobalPath(path) || !path.startsWith("sections.") ? globalData ?? liveData : liveData);
-  // Curated component paths (components.N.component.M.<field>) traverse the
-  // resolved Components document, so they must skip its `component` wrapper:
-  // the document itself sits at components.N, its fields live at components.N.<field>.
-  const unwrapComponentPath = (path: string) => path.replace(/^components\.(\d+)\.component\.(\d+)\./, "components.$1.sections.$2.");
+  // Component-owned edit paths are authored as
+  // components.N.component.M.<field> (N = curation row, M = section index in
+  // the resolved document). The depth-resolved global data stores the
+  // document's sections at components.N.component.sections.M, so the path is
+  // rewritten to match the data for reads and saves.
+  const unwrapComponentPath = (path: string) => path.replace(/^components\.(\d+)\.component\.(\d+)\./, "components.$1.component.sections.$2.");
   const getLiveValue = (path: string) => getPath(globalFor(path), unwrapComponentPath(path));
 
   const patchDOM = () => {
@@ -164,8 +166,8 @@ export function initInlinePreview({ serverURL, initialData, locale, globalSlug, 
 
     // Components are curated on the site global, so component-owned paths
     // save to the global, not the page. Save payload paths must match the
-    // CMS document shape: unwrap the resolved document's `component` wrapper
-    // (components.N.component.M.<field> → components.N.sections.M.<field>).
+    // CMS document shape (components.N.component.M.<field> →
+    // components.N.component.sections.M.<field>).
     const savePath = unwrapComponentPath(path);
     const endpoint = savePath.startsWith("sections.")
       ? collection === "pages" && id
