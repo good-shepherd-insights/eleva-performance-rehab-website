@@ -1,0 +1,34 @@
+---
+import type { Page } from "../lib/payload";
+
+interface Props {
+  content: Extract<Page["sections"][number], { blockType: "content" }>["content"];
+  kicker: string;
+  pathPrefix?: string;
+  kickerPath?: string;
+}
+
+const { content, kicker, pathPrefix = "", kickerPath } = Astro.props;
+const path = (suffix: string) => pathPrefix ? `${pathPrefix}.content.${suffix}` : `content.${suffix}`;
+---
+
+<section class="gc-shell gc-content-section" id={pathPrefix ? `content-${pathPrefix}` : "content"}>
+  <div class="gc-section-heading">
+    <p class="gc-kicker" data-inline-edit={kickerPath ?? (pathPrefix ? `${pathPrefix}.hero.secondaryCtaLabel` : "hero.secondaryCtaLabel")}>{kicker}</p>
+    <h2 class="gc-heading-xl">
+      <span data-inline-edit={path("headingTop")}>{content.headingTop}</span><br /><span data-inline-edit={path("headingBottom")}>{content.headingBottom}</span>
+    </h2>
+  </div>
+  <p class="gc-section-intro" data-inline-edit={path("intro")}>{content.intro}</p>
+  <div class="gc-pillar-grid">
+  {
+    content.pillars.map((pillar, index) => (
+      <article class="gc-pillar">
+        <span class="gc-pillar-index">{pillar.index}</span>
+        <h3 class="gc-pillar-title" data-inline-edit={path(`pillars.${index}.title`)}>{pillar.title}</h3>
+        <p class="gc-pillar-body" data-inline-edit={path(`pillars.${index}.body`)}>{pillar.body}</p>
+      </article>
+    ))
+  }
+  </div>
+</section>

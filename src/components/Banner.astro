@@ -1,0 +1,18 @@
+---
+import type { Page, SiteGlobals } from "../lib/payload";
+
+interface Props {
+  data: (Page | SiteGlobals)["banner"];
+  pathPrefix?: string;
+}
+
+const { data, pathPrefix = "" } = Astro.props;
+const path = (suffix: string) => pathPrefix ? `${pathPrefix}.${suffix}` : `banner.${suffix}`;
+const nextHref = data.nextHref.trim();
+---
+
+<div class="gc-shell gc-banner">
+  <span data-inline-edit={path("backLabel")}>{data.backLabel}</span>
+  <span data-inline-edit={path("centerLabel")}>{data.centerLabel}</span>
+  <a class="gc-banner-link" data-inline-edit={path("nextLabel")} href={nextHref}>{data.nextLabel}</a>
+</div>

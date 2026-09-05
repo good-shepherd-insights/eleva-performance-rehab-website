@@ -1,0 +1,171 @@
+# Project Context
+
+## Company Policy
+
+Read and follow [COMPANY_POLICY.md](COMPANY_POLICY.md) before using this
+project context or making changes. Company policy is mandatory and violations
+are blocking issues.
+
+## Project
+
+This is the production Astro frontend for a multilingual
+site connected to a separate Payload CMS backend.
+
+## Repository Scope
+
+This repository contains the public website only.
+
+The separate Payload CMS supplies:
+
+1. Page content — site chrome (the configured site global, `SITE_GLOBAL_SLUG`)
+   plus per-page sections (`pages` collection).
+2. Media records and image metadata.
+3. Localized navigation.
+4. Live preview data.
+5. The favicon.
+
+## Runtime Architecture
+
+1. Astro renders the public website.
+2. `astro.config.mjs` discovers the locale list and default locale from
+   Payload's `/api/locales` at build time — never hand-maintained here,
+   and no allow-list exists on this side.
+3. `/` renders the homepage in the CMS-configured default locale.
+   `/<locale>/` renders it in every other CMS-discovered locale.
+4. Non-home pages (Payload `pages` collection, any other slug) render
+   through `src/pages/[locale]/[slug].astro`. There is no top-level
+   `src/pages/[slug].astro` — a non-home page currently has no unprefixed
+   default-locale route, only `/<locale>/<slug>/` prefixed ones. This is an
+   existing gap, not a documented design decision; do not assume it is
+   intentional.
+5. `src/components/PageView.astro` is the shared page assembly for every
+   page (home and non-home alike), for both locales. It dispatches each
+   entry in a page's `sections` array by `blockType`.
+   `src/components/PageView.astro` (shared assembly) and
+   `src/pages/[locale]/[slug].astro`
+   are thin entrypoints that fetch a `Page` and hand it to `PageView.astro`.
+6. `src/lib/payload.ts` is the CMS boundary, with two distinct fetch shapes:
+   `getSiteGlobals()` fetches only site chrome (`brand`, `nav`,
+   `accessibility`, `footer`) from the configured site global
+   (`SITE_GLOBAL_SLUG`); `getPage()` /
+   `getPages()` fetch page content (hero, about, course, and every other
+   section) from the `pages` collection. Both normalize Payload's
+   relative media URLs to absolute.
+7. Every section `blockType` is validated in exactly one place —
+   `isCompletePage()` and `hasLocalizedPageData()` in `payload.ts`, one
+   branch per blockType — plus one render case in `PageView.astro`. A new
+   section type extends those three switches; it does not get its own
+   parallel validation, fetch, or view mechanism.
+8. `src/lib/inline-preview.ts` runs when the page is embedded inside Payload's
+   Live Preview iframe or popup.
+9. **Known gap, verified in source (`src/components/PageView.astro:45`):**
+   `jsonLd={{}}` is hardcoded for every page, home included.
+   `buildSiteGraph` (`src/lib/seo/schemaGraph.ts`) exists but is never
+   called from any `.astro` file (grep-verified) — every rendered page
+   currently ships an empty JSON-LD script tag.
+
+## System Design
+
+End-to-end data flow, one direction, no branch skipped:
+
+1. **Locale discovery (build time).** `astro.config.mjs` calls Payload's
+   `/api/locales` before Astro's own config is evaluated — this repo never
+   hand-maintains a locale list. Feeds Astro's `i18n.locales` and the
+   sitemap integration's `i18n` option.
+2. **Request/build enters at a thin route file** — `src/pages/index.astro`
+   (default-locale home, resolved from Astro's CMS-derived i18n state),
+   `src/pages/[locale]/index.astro` (home, other
+   locales), or `src/pages/[locale]/[slug].astro` (any other `pages`
+   document, `getStaticPaths` enumerated via `getPages()`). Each does one
+   thing: resolve which `Page` to fetch, fetch it via `getPage()`, hand it
+   to `PageView.astro`. No page-assembly logic belongs in these files.
+3. **`payload.ts` is the only place that talks to Payload.** Two shapes:
+   `getSiteGlobals()` → `SiteGlobals` (global, chrome only); `getPage()` /
+   `getPages()` → `Page` (collection, per-page `sections` blocks). Both
+   validate before returning (`isCompletePage`, `hasLocalizedPageData`,
+   one branch per blockType) and absolutize Payload's relative media URLs.
+4. **`PageView.astro` assembles the page**, for every slug and both
+   locales: fetches `SiteGlobals` itself (nav/footer/brand), resolves
+   locale-alternate links, renders `Banner`/`Nav`/`Footer`, and walks
+   `page.sections` dispatching one component per `blockType`
+   (`Hero`, `Highlights`, `Content`, `MediaFeature`, `ItemList`, `Quote`,
+   `CallToAction`). A new section type is a new branch here, in
+   `isCompletePage`, and in `hasLocalizedPageData` — three switches, not a
+   parallel mechanism.
+5. **`InlinePreviewBootstrap.astro`** wires the rendered page to
+   `src/lib/inline-preview.ts` when embedded in Payload's Live Preview
+   iframe/popup, using the `data-inline-edit` / `data-live-sync-bg` /
+   `data-live-sync-alt` attributes each section component sets.
+6. **`Layout.astro`** renders shared `<head>` concerns — metadata,
+   favicon, locale alternates, and (intended, currently broken per the
+   gap above) the JSON-LD graph from `src/lib/seo/`.
+7. **`@astrojs/sitemap`** (astro.config.mjs) generates the sitemap from
+   Astro's own route list at build time, independent of steps 3–6.
+
+## Design System
+
+1. `src/styles/global.css` is the design-system source of truth.
+2. Existing semantic class names should be preserved.
+3. Semantic design tokens should be extended before adding one-off colors or
+   spacing rules.
+
+## Content Model
+
+Content is split across two Payload sources, both mirrored by types in
+`src/lib/payload.ts`. Components should render fields from this structured
+data instead of embedding editable copy or media paths directly.
+
+**Site global** (slug from `SITE_GLOBAL_SLUG`, mirrored as `SiteGlobals`) —
+site-wide chrome, shared by every
+page:
+
+1. Brand logo, favicon, and alt text.
+2. Navigation items with `link` and `cta` variants.
+3. Accessibility labels.
+4. Footer tagline, links, and note.
+
+**`pages` collection (`Page`, one document per slug)** — per-page content,
+as an ordered `sections` array of typed blocks:
+
+1. Banner labels and links, and a metadata title template (per page).
+2. `hero` — content, media, captions, CTAs — plus its `process` steps.
+3. `highlights` items.
+4. `content`, `mediaFeature`, `itemList`, `quote`, `callToAction` — each its
+   own blockType.
+
+The `SiteGlobals` type in `payload.ts` mirrors the CMS site global's chrome
+fields, and the `Page.sections` union carries one member per blockType —
+neither is itself the shape of any single Payload response beyond what the
+page consumes.
+
+## Live Preview
+
+Inline preview uses these data attributes:
+
+1. `data-inline-edit` marks editable text.
+2. `data-live-sync-bg` marks background image URLs that sync from Payload.
+3. `data-live-sync-src` marks image sources that sync from Payload.
+4. `data-live-sync-alt` marks ARIA labels that sync from Payload.
+5. `data-live-sync-href` marks link hrefs that sync from Payload.
+
+Preserve these attributes when preserving the corresponding preview behavior.
+
+## Development
+
+Use the repo scripts and project guidance:
+
+1. Install dependencies with `npm install`.
+2. Run the frontend with `npm run dev`.
+3. In Conductor-managed sessions, start the dev server with
+   `astro dev --background`.
+4. Verify with `npx astro check`.
+5. Build with `npm run build`.
+
+The frontend expects Payload at the configured `CMS_ORIGIN` and reads the
+shared global through the configured `SITE_GLOBAL_SLUG`; both are required
+environment variables with no fallback.
+
+## Out Of Scope
+
+1. This repository should not become the source of truth for editable content or
+   uploaded media.

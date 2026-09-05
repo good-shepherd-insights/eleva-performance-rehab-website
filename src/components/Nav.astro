@@ -1,0 +1,92 @@
+---
+import type { SiteGlobals } from "../lib/payload";
+
+interface OtherLocale {
+  code: string;
+  label: string;
+  href: string;
+}
+
+interface Props {
+  brand: SiteGlobals["brand"];
+  nav: SiteGlobals["nav"];
+  accessibility: SiteGlobals["accessibility"];
+  homeHref: string;
+  otherLocales: OtherLocale[];
+}
+
+const { brand, nav, accessibility, homeHref, otherLocales } = Astro.props;
+const ariaLabelTemplate = accessibility.languageSwitchAriaLabelTemplate ?? "";
+const ariaLabelFor = (label: string) => ariaLabelTemplate.replace("{language}", label);
+const menuLabel = accessibility.menuLabel ?? "";
+---
+
+<header class="gc-shell gc-nav">
+  <a class="gc-logo" href={homeHref} aria-label={`${brand.logoAlt} ${accessibility.homeLinkSuffix}`}>
+    <span
+      class="gc-logo-img"
+      role="img"
+      aria-label={brand.logoAlt}
+      style={`background-image:url(${brand.logo.url})`}
+      data-live-sync-bg="brand.logo.url"
+      data-live-sync-alt="brand.logoAlt"
+    ></span>
+  </a>
+  <nav aria-label={accessibility.primaryNavLabel} class="gc-nav-links">
+    {nav.items.map((item, index) => (
+        <a
+          class:list={["gc-nav-link", { "gc-nav-cta": item.type === "cta" }]}
+          data-inline-edit={`nav.items.${index}.label`}
+          href={item.href}
+          target={item.openInNewTab ? "_blank" : undefined}
+          rel={item.openInNewTab ? "noreferrer" : undefined}
+        >
+          {item.label}
+        </a>
+      ))}
+    {otherLocales.map((other) => (
+      <a
+        class="gc-language-switch"
+        href={other.href}
+        hreflang={other.code}
+        aria-label={ariaLabelFor(other.label)}
+        data-language-switch
+      >
+        {other.label}
+      </a>
+    ))}
+  </nav>
+  <details class="gc-mobile-nav">
+    <summary>{menuLabel}</summary>
+    <nav aria-label={`${accessibility.primaryNavLabel} — ${menuLabel}`}>
+      {nav.items.map((item, index) => item.type !== "cta" && (
+            <a
+              data-inline-edit={`nav.items.${index}.label`}
+              href={item.href}
+              target={item.openInNewTab ? "_blank" : undefined}
+              rel={item.openInNewTab ? "noreferrer" : undefined}
+            >
+              {item.label}
+            </a>
+          ))}
+      {otherLocales.map((other) => (
+        <a href={other.href} hreflang={other.code}>
+          {other.label}
+        </a>
+      ))}
+    </nav>
+  </details>
+</header>
+
+<script>
+  document.querySelectorAll<HTMLDetailsElement>(".gc-mobile-nav").forEach((menu) => {
+    menu.querySelectorAll("a").forEach((link) => {
+      link.addEventListener("click", () => menu.removeAttribute("open"));
+    });
+    menu.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape" || !menu.open) return;
+      menu.open = false;
+      menu.querySelector("summary")?.focus();
+    });
+  });
+</script>

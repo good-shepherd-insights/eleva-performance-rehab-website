@@ -1,0 +1,25 @@
+---
+import type { SiteGlobals, Page } from "../lib/payload";
+
+interface Props {
+  collection?: "globals" | "pages";
+  id?: string | number;
+  initialData: SiteGlobals | Page;
+  initialGlobalData?: SiteGlobals;
+  locale: string;
+  globalSlug: string;
+}
+
+const { collection = "globals", id, initialData, initialGlobalData, locale, globalSlug } = Astro.props;
+---
+<script is:inline define:vars={{ collection, id, initialData, initialGlobalData, locale, globalSlug }}>
+  import { initInlinePreview } from "../lib/inline-preview";
+
+  const root = document.querySelector<HTMLElement>("[data-inline-preview-root]");
+  const embedded = window.parent !== window || Boolean(window.opener);
+
+  if (root && embedded && document.referrer) {
+    const serverURL = new URL(document.referrer).origin;
+    initInlinePreview({ serverURL, locale, initialData, initialGlobalData, collection, id, globalSlug });
+  }
+</script>

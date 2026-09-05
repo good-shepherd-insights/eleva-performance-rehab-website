@@ -1,0 +1,64 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Banner from "./Banner.astro";
+import Nav from "./Nav.astro";
+import Hero from "./Hero.astro";
+import Highlights from "./Highlights.astro";
+import Content from "./Content.astro";
+import MediaFeature from "./MediaFeature.astro";
+import ItemList from "./ItemList.astro";
+import Quote from "./Quote.astro";
+import CallToAction from "./CallToAction.astro";
+import Footer from "./Footer.astro";
+import InlinePreviewBootstrap from "./InlinePreviewBootstrap.astro";
+import { getRelativeLocaleUrl } from "astro:i18n";
+import { getSiteGlobals, cmsOrigin as payloadURL, globalSlug as payloadGlobalSlug, type Page } from "../lib/payload";
+import { getLocales } from "../lib/locales";
+
+interface Props {
+  locale: string;
+  slug: string;
+  page: Page;
+}
+
+const { locale, page: content } = Astro.props;
+const [site, locales] = await Promise.all([getSiteGlobals(locale), getLocales()]);
+const ctaNavIndex = site.nav.items.findIndex((item) => item.type === "cta");
+const ctaNavItem = site.nav.items[ctaNavIndex];
+const title = content.metadata.titleTemplate.replace("{title}", content.title);
+const homeHref = getRelativeLocaleUrl(locale);
+const otherLocales = locales.filter((entry) => entry.code !== locale).map((entry) => ({
+  code: entry.code,
+  label: entry.label,
+  href: content.slug === "home" ? getRelativeLocaleUrl(entry.code) : `${getRelativeLocaleUrl(entry.code)}${content.slug}`,
+}));
+const skipToContentLabel = site.accessibility.skipToContentLabel ?? "";
+const siteOrigin = Astro.site ?? Astro.url;
+const canonicalURL = new URL(Astro.url.pathname, siteOrigin);
+const heroIndex = content.sections.findIndex((section) => section.blockType === "hero");
+const hero = content.sections[heroIndex];
+const description = hero?.blockType === "hero" ? hero.hero.subhead : content.title;
+---
+
+<Layout title={title} description={description} locale={locale} favicon={site.brand.favicon.url} image={hero?.blockType === "hero" ? hero.hero.image.url : site.brand.logo.url} imageAlt={hero?.blockType === "hero" ? hero.hero.imageAlt : site.brand.logoAlt} jsonLd={{}}>
+  <div class="gc-page" data-inline-preview-root data-payload-server-url={payloadURL} data-payload-global-slug={payloadGlobalSlug} data-payload-collection="pages" data-payload-id={content.id} data-locale={locale}>
+    <a class="gc-skip-link" href="#main-content">{skipToContentLabel}</a>
+    <Banner data={content.banner} pathPrefix="banner" />
+    <Nav brand={site.brand} nav={site.nav} accessibility={site.accessibility} homeHref={homeHref} otherLocales={otherLocales} />
+    <main id="main-content" tabindex="-1">
+      {content.sections.map((section, index) => {
+        const prefix = `sections.${index}`;
+        if (section.blockType === "hero") return <Hero hero={section.hero} process={section.process} accessibility={site.accessibility} ctaLabel={ctaNavItem?.label ?? ""} ctaPath={`nav.items.${ctaNavIndex}.label`} pathPrefix={prefix} />;
+        if (section.blockType === "highlights") return <Highlights highlights={section.highlights} accessibility={site.accessibility} pathPrefix={prefix} />;
+        if (section.blockType === "content") return <Content content={section.content} kicker={hero?.blockType === "hero" ? hero.hero.secondaryCtaLabel : ""} kickerPath={hero?.blockType === "hero" ? `sections.${heroIndex}.hero.secondaryCtaLabel` : undefined} pathPrefix={prefix} />;
+        if (section.blockType === "mediaFeature") return <MediaFeature mediaFeature={section.mediaFeature} pathPrefix={prefix} />;
+        if (section.blockType === "itemList") return <ItemList itemList={section.itemList} pathPrefix={prefix} />;
+        if (section.blockType === "quote") return <Quote quote={section.quote} pathPrefix={prefix} />;
+        return <CallToAction callToAction={section.callToAction} pathPrefix={prefix} />;
+      })}
+    </main>
+    <Footer brand={site.brand} footer={site.footer} />
+  </div>
+</Layout>
+
+<InlinePreviewBootstrap collection="pages" id={content.id} initialData={content} initialGlobalData={site} locale={locale} globalSlug={payloadGlobalSlug} />

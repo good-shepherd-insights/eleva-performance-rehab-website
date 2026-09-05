@@ -1,0 +1,58 @@
+---
+import type { Page } from "../lib/payload";
+
+interface Props {
+  hero: Extract<Page["sections"][number], { blockType: "hero" }>["hero"];
+  ctaLabel: string;
+  ctaPath: string;
+  process: Extract<Page["sections"][number], { blockType: "hero" }>["process"];
+  accessibility: {
+    heroOverviewLabel: string;
+  };
+  pathPrefix?: string;
+}
+
+const { hero, ctaLabel, ctaPath, process, accessibility, pathPrefix = "" } = Astro.props;
+const path = (suffix: string) => pathPrefix ? `${pathPrefix}.hero.${suffix}` : `hero.${suffix}`;
+const processPath = (index: number) => pathPrefix ? `${pathPrefix}.process.steps.${index}.label` : `process.steps.${index}.label`;
+---
+
+<section class="gc-shell gc-hero">
+  <div class="gc-hero-copy">
+    <p class="gc-kicker" data-inline-edit={path("kicker")}>{hero.kicker}</p>
+    <h1 class="gc-hero-heading" data-inline-edit={path("headline")}>{hero.headline}</h1>
+    <p class="gc-hero-subhead" data-inline-edit={path("subhead")}>{hero.subhead}</p>
+    <div class="gc-hero-actions">
+      <a class="gc-primary-action" href={hero.primaryCtaHref} data-live-sync-href={path("primaryCtaHref")}>
+        <span data-inline-edit={ctaPath}>{ctaLabel}</span> <span aria-hidden="true">↗</span>
+      </a>
+      <a class="gc-secondary-action" data-inline-edit={path("secondaryCtaLabel")} href={hero.secondaryCtaHref}>{hero.secondaryCtaLabel}</a>
+    </div>
+  </div>
+  <figure class="gc-hero-visual">
+    <img
+      src={hero.image.url}
+      alt={hero.imageAlt}
+      width={hero.image.width}
+      height={hero.image.height}
+      loading="eager"
+      fetchpriority="high"
+      decoding="async"
+      data-live-sync-src={path("image.url")}
+      data-live-sync-alt={path("imageAlt")}
+    />
+    <figcaption class="gc-visual-caption" data-inline-edit={path("visualCaption")}>{hero.visualCaption}</figcaption>
+  </figure>
+  <div class="gc-hero-aside" aria-label={accessibility.heroOverviewLabel}>
+    {
+      process.steps.map((step, index) => (
+        <>
+          <span data-inline-edit={processPath(index)}>{step.label}</span>
+          {index < process.steps.length - 1 && (
+            <i class="gc-hero-aside-divider" aria-hidden="true" />
+          )}
+        </>
+      ))
+    }
+  </div>
+</section>
