@@ -32,10 +32,11 @@ of an unrelated change; it needs its own scoped ticket.
 
 `src/components/PageView.astro` is the shared page assembly used for every
 page — home and every other CMS-authored page — for both locales. It walks
-a page's `sections` array and renders each section as neutral semantic
-markup carrying its type and inline-edit/live-sync markers; the template
-ships no per-section presentational components, so each project authors its
-own. `src/components/PageView.astro` and `src/pages/[locale]/[slug].astro`
+a page's `sections` array and renders each section as a neutral semantic
+`<section>`; the template ships no per-section presentational components
+and no inline-edit/live-sync markup — those attributes belong to the markup
+each project authors. `src/components/PageView.astro` and
+`src/pages/[locale]/[slug].astro`
 are thin entrypoints that fetch one `Page` via `getPage()`/`getPages()` and
 hand it to `PageView.astro`; keep them thin, don't grow page-assembly logic
 back into them.

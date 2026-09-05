@@ -2,7 +2,6 @@
 import Layout from "../layouts/Layout.astro";
 import InlinePreviewBootstrap from "./InlinePreviewBootstrap.astro";
 import { getSiteGlobals, cmsOrigin as payloadURL, globalSlug as payloadGlobalSlug, type Page } from "../lib/payload";
-import { getLocales } from "../lib/locales";
 
 interface Props {
   locale: string;
@@ -11,11 +10,9 @@ interface Props {
 }
 
 const { locale, page: content } = Astro.props;
-const [site] = await Promise.all([getSiteGlobals(locale), getLocales()]);
+const site = await getSiteGlobals(locale);
 const title = content.metadata.titleTemplate.replace("{title}", content.title);
 const skipToContentLabel = site.accessibility.skipToContentLabel ?? "";
-const siteOrigin = Astro.site ?? Astro.url;
-const canonicalURL = new URL(Astro.url.pathname, siteOrigin);
 ---
 
 <Layout title={title} description={content.title} locale={locale} favicon={site.brand.favicon.url} image={site.brand.logo.url} imageAlt={site.brand.logoAlt} jsonLd={{}}>
