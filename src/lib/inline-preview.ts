@@ -183,8 +183,8 @@ export function initInlinePreview({ serverURL, initialData, locale, globalSlug, 
     el.spellcheck = true;
   });
 
-  // Many editable spans sit inside <a> (nav links, CTAs) — without this,
-  // clicking to place a cursor navigates away instead.
+  // Editable spans can sit inside <a> — without this, clicking to place a
+  // cursor navigates away instead.
   document.addEventListener("click", (event) => {
     const target = (event.target as HTMLElement).closest<HTMLElement>("[data-inline-edit]");
     if (target?.isContentEditable) event.preventDefault();
