@@ -13,7 +13,6 @@ export function buildWebsiteSchema(
     "@type": "WebSite",
     "@id": ids.website,
     name: page.brand.logoAlt,
-    description: page.footer.tagline,
     url: ids.baseUrl,
   };
 }
@@ -26,7 +25,6 @@ export function buildOrganizationSchema(
     "@type": "Organization",
     "@id": ids.organization,
     name: page.brand.logoAlt,
-    description: page.footer.tagline,
     url: ids.baseUrl,
     logo: {
       "@type": "ImageObject",

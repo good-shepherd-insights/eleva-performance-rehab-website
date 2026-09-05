@@ -11,99 +11,25 @@ export interface Media {
 
 export interface SiteGlobals {
   brand: { logo: Media; logoAlt: string; favicon: Media };
-  nav: {
-    items: {
-      type: "link" | "cta";
-      label: string;
-      href: string;
-      openInNewTab?: boolean | null;
-    }[];
-  };
   accessibility: {
     primaryNavLabel: string;
-    heroOverviewLabel: string;
-    programSummaryLabel: string;
     homeLinkSuffix: string;
     skipToContentLabel?: string | null;
     menuLabel?: string | null;
     languageSwitchAriaLabelTemplate?: string | null;
   };
-  footer: {
-    tagline: string;
-    links: { label: string; href: string }[];
-    note: string;
-  };
+  components: PageSection[];
 }
 
-type Highlight = { label: string };
-type Pillar = { index: string; title: string; body: string };
-type Step = { number: string; title: string; body: string };
-type Item = {
-  title: string;
-  detail: string;
-  tag: string;
-  itemLabel: string;
-  viewLabel: string;
-  viewAriaLabel: string;
-  href: string;
+export type PageSection = {
+  blockType: string;
+  [key: string]: unknown;
 };
-
-export type PageSection =
-  | { blockType: "hero"; hero: {
-      kicker: string;
-      headline: string;
-      subhead: string;
-      image: Media;
-      imageAlt: string;
-      visualCaption: string;
-      secondaryCtaLabel: string;
-      primaryCtaHref: string;
-      secondaryCtaHref: string;
-    }; process: { steps: { label: string }[] } }
-  | { blockType: "highlights"; highlights: { items: Highlight[] } }
-  | { blockType: "content"; content: {
-      headingTop: string;
-      headingBottom: string;
-      intro: string;
-      pillars: Pillar[];
-    } }
-  | { blockType: "mediaFeature"; mediaFeature: {
-      photo: Media;
-      photoAlt: string;
-      kicker: string;
-      headingTop: string;
-      headingBottom: string;
-      steps: Step[];
-      linkLabel: string;
-      linkHref: string;
-    } }
-  | { blockType: "itemList"; itemList: {
-      kicker: string;
-      heading: string;
-      intro: string;
-      items: Item[];
-      allLabel: string;
-      allHref: string;
-    } }
-  | { blockType: "quote"; quote: { quote: string; attribution: string } }
-  | { blockType: "callToAction"; callToAction: {
-      kicker: string;
-      headingTop: string;
-      headingBottom: string;
-      ctaLabel: string;
-      href: string;
-    } };
 
 export type Page = {
   id: string | number;
   slug: string;
   title: string;
-  banner: {
-    backLabel: string;
-    centerLabel: string;
-    nextLabel: string;
-    nextHref: string;
-  };
   metadata: { titleTemplate: string };
   sections: PageSection[];
 };
@@ -151,63 +77,47 @@ export async function getSiteGlobals(locale: string): Promise<SiteGlobals> {
 
 function absolutizePageMediaUrls(page: Page): Page {
   for (const section of page.sections) {
-    if (section.blockType === "hero") section.hero.image.url = new URL(section.hero.image.url, cmsOrigin).toString();
-    if (section.blockType === "mediaFeature") section.mediaFeature.photo.url = new URL(section.mediaFeature.photo.url, cmsOrigin).toString();
+    absolutizeMediaUrls(section);
   }
   return page;
+}
+
+// Walks an arbitrary block payload and absolutizes every Media-shaped value
+// ({ url, alt, width, height }) found at any depth — sections are
+// tenant-defined, so no per-blockType knowledge exists here.
+function absolutizeMediaUrls(value: unknown): void {
+  if (Array.isArray(value)) {
+    for (const entry of value) absolutizeMediaUrls(entry);
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+  const record = value as Record<string, unknown>;
+  if (hasMedia(record)) {
+    record.url = new URL(record.url, cmsOrigin).toString();
+    return;
+  }
+  for (const child of Object.values(record)) {
+    if (child && typeof child === "object") absolutizeMediaUrls(child);
+  }
 }
 
 const hasText = (value: unknown) => typeof value === "string" && value.trim().length > 0;
 const hasMedia = (value: unknown): value is Media => {
   if (!value || typeof value !== "object") return false;
   const media = value as Partial<Media>;
-  return hasText(media.url) && hasText(media.alt) && typeof media.width === "number" && typeof media.height === "number";
+  return hasText(media.url) && typeof media.url === "string" && !media.url.startsWith("http") && typeof media.width === "number" && typeof media.height === "number";
 };
-const hasNonEmpty = (value: unknown, item: (entry: unknown) => boolean) => Array.isArray(value) && value.length > 0 && value.every(item);
 
 function isCompletePage(page: Page): boolean {
   if ((typeof page.id !== "string" && typeof page.id !== "number") || !hasText(page.slug) || !hasText(page.title)) return false;
-  if (!page.banner || ![page.banner.backLabel, page.banner.centerLabel, page.banner.nextLabel, page.banner.nextHref].every(hasText)) return false;
   if (!page.metadata || page.metadata.titleTemplate !== "{title}") return false;
   const sections = page.sections;
   if (!Array.isArray(sections) || sections.length === 0) return false;
-  return sections.every((section) => {
-    if (section.blockType === "hero") {
-      const hero = section.hero;
-      const process = section.process?.steps;
-      return Boolean(hero && [hero.kicker, hero.headline, hero.subhead, hero.imageAlt, hero.visualCaption, hero.secondaryCtaLabel, hero.primaryCtaHref, hero.secondaryCtaHref].every(hasText) && hasMedia(hero.image) && hasNonEmpty(process, (step) => Boolean(step && hasText((step as { label?: unknown }).label))));
-    }
-    if (section.blockType === "highlights") return hasNonEmpty(section.highlights?.items, (item) => Boolean(item && hasText((item as { label?: unknown }).label)));
-    if (section.blockType === "content") return [section.content?.headingTop, section.content?.headingBottom, section.content?.intro].every(hasText) && hasNonEmpty(section.content?.pillars, (pillar) => Boolean(pillar && hasText((pillar as { index?: unknown; title?: unknown; body?: unknown }).index) && hasText((pillar as { title?: unknown }).title) && hasText((pillar as { body?: unknown }).body)));
-    if (section.blockType === "mediaFeature") {
-      const mediaFeature = section.mediaFeature;
-      const steps = mediaFeature?.steps;
-      const completeSteps = hasNonEmpty(steps, (step) => Boolean(step && hasText((step as { number?: unknown; title?: unknown; body?: unknown }).number) && hasText((step as { title?: unknown }).title) && hasText((step as { body?: unknown }).body)));
-      return Boolean(mediaFeature && hasMedia(mediaFeature.photo) && [mediaFeature.photoAlt, mediaFeature.kicker, mediaFeature.headingTop, mediaFeature.headingBottom, mediaFeature.linkLabel, mediaFeature.linkHref].every(hasText) && completeSteps);
-    }
-    if (section.blockType === "itemList") {
-      const itemList = section.itemList;
-      const items = itemList?.items;
-      const completeItems = hasNonEmpty(items, (item) => Boolean(item && ["title", "detail", "tag", "itemLabel", "viewLabel", "viewAriaLabel", "href"].every((key) => hasText((item as Record<string, unknown>)[key]))));
-      return Boolean(itemList && [itemList.kicker, itemList.heading, itemList.intro, itemList.allLabel, itemList.allHref].every(hasText) && completeItems);
-    }
-    if (section.blockType === "quote") return Boolean(section.quote && hasText(section.quote.quote) && hasText(section.quote.attribution));
-    if (section.blockType === "callToAction") return Boolean(section.callToAction && [section.callToAction.kicker, section.callToAction.headingTop, section.callToAction.headingBottom, section.callToAction.ctaLabel, section.callToAction.href].every(hasText));
-    return false;
-  });
+  return sections.every((section) => Boolean(section && hasText(section.blockType)));
 }
 
 function hasLocalizedPageData(page: Page): boolean {
-  if (hasText(page.title) || [page.banner?.backLabel, page.banner?.centerLabel, page.banner?.nextLabel, page.metadata?.titleTemplate].some(hasText)) return true;
-  return (page.sections ?? []).some((section) => {
-    if (section.blockType === "hero") return [section.hero?.kicker, section.hero?.headline, section.hero?.subhead, section.hero?.imageAlt, section.hero?.visualCaption, section.hero?.secondaryCtaLabel, ...(section.process?.steps ?? []).map((step) => step.label)].some(hasText);
-    if (section.blockType === "highlights") return (section.highlights?.items ?? []).some((item) => hasText(item.label));
-    if (section.blockType === "content") return [section.content?.headingTop, section.content?.headingBottom, section.content?.intro, ...(section.content?.pillars ?? []).flatMap((pillar) => [pillar.title, pillar.body])].some(hasText);
-    if (section.blockType === "mediaFeature") return [section.mediaFeature?.photoAlt, section.mediaFeature?.kicker, section.mediaFeature?.headingTop, section.mediaFeature?.headingBottom, section.mediaFeature?.linkLabel, ...(section.mediaFeature?.steps ?? []).flatMap((step) => [step.title, step.body])].some(hasText);
-    if (section.blockType === "itemList") return [section.itemList?.kicker, section.itemList?.heading, section.itemList?.intro, section.itemList?.allLabel, ...(section.itemList?.items ?? []).flatMap((item) => [item.title, item.detail, item.tag, item.itemLabel, item.viewLabel, item.viewAriaLabel])].some(hasText);
-    if (section.blockType === "quote") return [section.quote?.quote, section.quote?.attribution].some(hasText);
-    return [section.callToAction?.kicker, section.callToAction?.headingTop, section.callToAction?.headingBottom, section.callToAction?.ctaLabel].some(hasText);
-  });
+  return hasText(page.title) || [page.metadata?.titleTemplate].some(hasText);
 }
 
 async function fetchPages(locale: string, slug?: string): Promise<Page[]> {

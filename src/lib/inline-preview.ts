@@ -71,7 +71,7 @@ export function initInlinePreview({ serverURL, initialData, locale, globalSlug, 
   let globalData = initialGlobalData;
   let unsavedPagePreview = false;
   const saveTimers = new Map<string, number>();
-  const isGlobalPath = (path: string) => /^(nav|footer|brand|accessibility)\./.test(path);
+  const isGlobalPath = (path: string) => /^(brand|accessibility)\./.test(path);
   const getLiveValue = (path: string) => getPath(isGlobalPath(path) && globalData ? globalData : liveData, path);
 
   const patchDOM = () => {
