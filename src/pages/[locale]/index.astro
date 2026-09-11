@@ -1,0 +1,29 @@
+---
+import { toCodes } from "astro:i18n";
+import { i18n } from "astro:config/client";
+import PageView from "../../components/PageView.astro";
+import { getPage } from "../../lib/payload";
+
+// Every non-default locale gets a page here, generated from whatever
+// Payload's /locales endpoint reports (see astro.config.mjs's
+// discoverLocales()) — adding a locale in Payload adds a page here on the
+// next build, no new file needed. The default locale lives at
+// src/pages/index.astro instead: prefixDefaultLocale:false means "/" is
+// unprefixed, which can't be produced by this prefixed dynamic route.
+export async function getStaticPaths() {
+  if (!i18n) {
+    throw new Error("astro:config/client has no i18n config — check astro.config.mjs's i18n block.");
+  }
+  const { defaultLocale } = i18n;
+  const codes = toCodes(i18n.locales);
+  return codes
+    .filter((code) => code !== defaultLocale)
+    .map((locale) => ({ params: { locale } }));
+}
+
+const { locale } = Astro.params;
+const page = await getPage("home", locale);
+if (!page) throw new Error(`Pages.home was not found for locale "${locale}".`);
+---
+
+<PageView locale={locale} slug="home" page={page} />

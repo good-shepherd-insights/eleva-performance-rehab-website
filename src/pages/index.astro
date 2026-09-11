@@ -1,0 +1,15 @@
+---
+import PageView from "../components/PageView.astro";
+import { i18n } from "astro:config/client";
+import { getPage } from "../lib/payload";
+
+// `/` is the unprefixed default-locale route (prefixDefaultLocale:false),
+// which a prefixed dynamic route cannot produce — this file resolves the
+// default locale from Astro's CMS-derived i18n state.
+if (!i18n) throw new Error("astro:config/client has no i18n config — check astro.config.mjs's i18n block.");
+const defaultLocale = i18n.defaultLocale;
+const page = await getPage("home", defaultLocale);
+if (!page) throw new Error(`Pages.home was not found in Payload for locale "${defaultLocale}".`);
+---
+
+<PageView locale={defaultLocale} slug="home" page={page} />

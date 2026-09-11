@@ -1,0 +1,30 @@
+/* Base reset only — presentation is authored by each project, not shipped. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  line-height: 1.5;
+}
+
+img,
+svg,
+video {
+  display: block;
+  max-width: 100%;
+}
+
+#main-content:focus {
+  outline: none;
+}
