@@ -2,6 +2,8 @@
 import Layout from "../layouts/Layout.astro";
 import InlinePreviewBootstrap from "./InlinePreviewBootstrap.astro";
 import { getSiteGlobals, cmsOrigin as payloadURL, globalSlug as payloadGlobalSlug, type Page } from "../lib/payload";
+import { isSharedSection } from "@good-shepherd-insights/website-components/core";
+import { SectionRenderer } from "@good-shepherd-insights/website-components/react";
 
 interface Props {
   locale: string;
@@ -23,18 +25,26 @@ const globalComponents = site.components
   <div data-inline-preview-root data-payload-server-url={payloadURL} data-payload-global-slug={payloadGlobalSlug} data-payload-collection="pages" data-payload-id={content.id} data-locale={locale}>
     {skipToContentLabel && <a class="skip-link" href="#main-content">{skipToContentLabel}</a>}
     {globalComponents.map((sections, componentIndex) => (
-      sections.map((section, sectionIndex) => (
-        <section data-component={componentIndex} data-section={section.blockType} data-section-index={sectionIndex}>
-          {section.blockType}
-        </section>
-      ))
+      sections.map((section, sectionIndex) => {
+        const prefix = `components.${componentIndex}.component.${sectionIndex}`;
+        if (isSharedSection(section)) return <SectionRenderer section={section} pathPrefix={prefix} />;
+        return (
+          <section data-component={componentIndex} data-section={section.blockType} data-section-index={sectionIndex}>
+            {section.blockType}
+          </section>
+        );
+      })
     ))}
     <main id="main-content" tabindex="-1">
-      {content.sections.map((section, index) => (
-        <section data-section={section.blockType} data-section-index={index}>
-          {section.blockType}
-        </section>
-      ))}
+      {content.sections.map((section, index) => {
+        const prefix = `sections.${index}`;
+        if (isSharedSection(section)) return <SectionRenderer section={section} pathPrefix={prefix} />;
+        return (
+          <section data-section={section.blockType} data-section-index={index}>
+            {section.blockType}
+          </section>
+        );
+      })}
     </main>
   </div>
 </Layout>
