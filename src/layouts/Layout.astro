@@ -10,7 +10,7 @@ interface Props {
   description: string;
   locale: string;
   favicon?: string;
-  image: string;
+  image?: string;
   imageAlt: string;
   jsonLd: unknown;
 }
@@ -52,35 +52,45 @@ const languageAlternates = [
     <meta name="theme-color" content="#ffffff" />
     <link rel="icon" href={favicon} type="image/svg+xml" />
     <link rel="apple-touch-icon" href={favicon} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" />
+    {/* Ebony — the navbar's Call/Book Now/Our Services font — via the
+        Adobe Typekit kit id from the Figma file's own dev-mode export. */}
+    <link rel="stylesheet" href="https://use.typekit.net/nwu5mhu.css" />
     <SEO
       title={title}
       description={description}
       canonical={canonicalURL.toString()}
       languageAlternates={languageAlternates}
-      openGraph={{
-        basic: {
-          title,
-          type: "website",
-          image,
-          url: canonicalURL.toString(),
-        },
-        optional: {
-          description,
-          // og:locale's canonical shape is language_TERRITORY, but Payload's
-          // locale config has no territory data — fabricating one (e.g.
-          // "ko_KR") isn't available for an arbitrary future locale, so this
-          // uses the bare language code rather than guessing a territory.
-          locale,
-        },
-        image: { alt: imageAlt },
-      }}
-      twitter={{
-        card: "summary_large_image",
-        title,
-        description,
-        image,
-        imageAlt,
-      }}
+      openGraph={image
+        ? {
+            basic: {
+              title,
+              type: "website",
+              image,
+              url: canonicalURL.toString(),
+            },
+            optional: {
+              description,
+              // og:locale's canonical shape is language_TERRITORY, but Payload's
+              // locale config has no territory data — fabricating one (e.g.
+              // "ko_KR") isn't available for an arbitrary future locale, so this
+              // uses the bare language code rather than guessing a territory.
+              locale,
+            },
+            image: { alt: imageAlt },
+          }
+        : undefined}
+      twitter={image
+        ? {
+            card: "summary_large_image",
+            title,
+            description,
+            image,
+            imageAlt,
+          }
+        : undefined}
     />
     <script type="application/ld+json" is:inline set:html={serializeJsonLd(jsonLd)} />
   </head>

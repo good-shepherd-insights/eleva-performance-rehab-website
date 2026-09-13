@@ -23,7 +23,7 @@ function curatedSections(entry: CuratedComponent): PageSection[] {
 }
 
 export interface SiteGlobals {
-  brand: { logo: Media; logoAlt: string; favicon: Media };
+  brand: { logo?: Media; logoAlt: string; favicon?: Media };
   accessibility: {
     primaryNavLabel: string;
     homeLinkSuffix: string;
@@ -68,9 +68,16 @@ export const globalSlug = requiredEnv("SITE_GLOBAL_SLUG");
 export const PAGE_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 function absolutizeSiteChromeUrls(page: SiteGlobals): SiteGlobals {
-  // Payload returns media `url` as a path relative to its own origin.
-  page.brand.logo.url = new URL(page.brand.logo.url, cmsOrigin).toString();
-  page.brand.favicon.url = new URL(page.brand.favicon.url, cmsOrigin).toString();
+  // Payload returns media `url` as a path relative to its own origin. Both
+  // fields are required in the CMS schema but may still be briefly unset
+  // (e.g. a freshly-created SiteGlobals doc before an editor has published
+  // brand assets) - degrade gracefully instead of crashing every page.
+  if (page.brand?.logo?.url) {
+    page.brand.logo.url = new URL(page.brand.logo.url, cmsOrigin).toString();
+  }
+  if (page.brand?.favicon?.url) {
+    page.brand.favicon.url = new URL(page.brand.favicon.url, cmsOrigin).toString();
+  }
   for (const entry of page.components ?? []) {
     for (const section of curatedSections(entry)) {
       absolutizeMediaUrls(section);

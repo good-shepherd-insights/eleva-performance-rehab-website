@@ -21,7 +21,7 @@ const globalComponents = site.components
   .filter((sections) => sections.length > 0);
 ---
 
-<Layout title={title} description={content.title} locale={locale} favicon={site.brand.favicon.url} image={site.brand.logo.url} imageAlt={site.brand.logoAlt} jsonLd={{}}>
+<Layout title={title} description={content.title} locale={locale} favicon={site.brand.favicon?.url} image={site.brand.logo?.url} imageAlt={site.brand.logoAlt} jsonLd={{}}>
   <div data-inline-preview-root data-payload-server-url={payloadURL} data-payload-global-slug={payloadGlobalSlug} data-payload-collection="pages" data-payload-id={content.id} data-locale={locale}>
     {skipToContentLabel && <a class="skip-link" href="#main-content">{skipToContentLabel}</a>}
     {globalComponents.map((sections, componentIndex) => (
