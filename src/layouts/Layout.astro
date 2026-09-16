@@ -95,6 +95,8 @@ const languageAlternates = [
     <script type="application/ld+json" is:inline set:html={serializeJsonLd(jsonLd)} />
   </head>
   <body>
+    <slot name="navbar" />
     <slot />
+    <slot name="footer" />
   </body>
 </html>
