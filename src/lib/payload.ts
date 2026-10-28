@@ -13,7 +13,7 @@ export interface Media {
 // A curated entry resolves (depth=2) to the full Components document;
 // `sections` is the renderable content inside it.
 export type CuratedComponent = {
-  component: { sections?: PageSection[] | null } | number | null;
+  component: { id: string | number; sections?: PageSection[] | null } | string | number | null;
 };
 
 function curatedSections(entry: CuratedComponent): PageSection[] {
@@ -23,14 +23,7 @@ function curatedSections(entry: CuratedComponent): PageSection[] {
 }
 
 export interface SiteGlobals {
-  brand: { logo: Media; logoAlt: string; favicon: Media };
-  accessibility: {
-    primaryNavLabel: string;
-    homeLinkSuffix: string;
-    skipToContentLabel?: string | null;
-    menuLabel?: string | null;
-    languageSwitchAriaLabelTemplate?: string | null;
-  };
+  brand: { logo?: Media; logoAlt?: string; favicon?: Media };
   components: CuratedComponent[];
 }
 
@@ -45,6 +38,9 @@ export type Page = {
   title: string;
   metadata: { titleTemplate: string };
   sections: PageSection[];
+  // Global component ids (SiteGlobals.components[].component.id) to hide
+  // on this page only — everything else there still renders.
+  hiddenGlobalComponents?: (string | number)[];
 };
 
 function requiredEnv(name: string): string {
@@ -68,9 +64,16 @@ export const globalSlug = requiredEnv("SITE_GLOBAL_SLUG");
 export const PAGE_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 function absolutizeSiteChromeUrls(page: SiteGlobals): SiteGlobals {
-  // Payload returns media `url` as a path relative to its own origin.
-  page.brand.logo.url = new URL(page.brand.logo.url, cmsOrigin).toString();
-  page.brand.favicon.url = new URL(page.brand.favicon.url, cmsOrigin).toString();
+  // Payload returns media `url` as a path relative to its own origin. Both
+  // fields are required in the CMS schema but may still be briefly unset
+  // (e.g. a freshly-created SiteGlobals doc before an editor has published
+  // brand assets) - degrade gracefully instead of crashing every page.
+  if (page.brand?.logo?.url) {
+    page.brand.logo.url = new URL(page.brand.logo.url, cmsOrigin).toString();
+  }
+  if (page.brand?.favicon?.url) {
+    page.brand.favicon.url = new URL(page.brand.favicon.url, cmsOrigin).toString();
+  }
   for (const entry of page.components ?? []) {
     for (const section of curatedSections(entry)) {
       absolutizeMediaUrls(section);

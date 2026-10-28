@@ -26,11 +26,15 @@ export function buildOrganizationSchema(
     "@id": ids.organization,
     name: page.brand.logoAlt,
     url: ids.baseUrl,
-    logo: {
-      "@type": "ImageObject",
-      url: page.brand.logo.url,
-      width: page.brand.logo.width,
-      height: page.brand.logo.height,
-    },
+    ...(page.brand.logo
+      ? {
+          logo: {
+            "@type": "ImageObject",
+            url: page.brand.logo.url,
+            width: page.brand.logo.width,
+            height: page.brand.logo.height,
+          },
+        }
+      : {}),
   };
 }

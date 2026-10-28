@@ -2,6 +2,7 @@
 import { defineConfig } from 'astro/config';
 
 import sitemap from '@astrojs/sitemap';
+import react from '@astrojs/react';
 
 /** @param {string} name */
 function requiredEnv(name) {
@@ -59,5 +60,21 @@ export default defineConfig({
         locales: Object.fromEntries(locales.map((locale) => [locale, locale])),
       },
     }),
+    // Required to render SectionRenderer from @good-shepherd-insights/website-components,
+    // which is a React component - Astro has no built-in renderer for React JSX.
+    react(),
   ],
+  vite: {
+    // Locally-linked packages (pnpm link, before @good-shepherd-insights/website-components
+    // is published) are treated as external SSR modules by default, and Vite doesn't
+    // apply its CSS-import handling to those — causing "Could not import ./styles.css"
+    // for the package's component styles. Remove this once the package is published
+    // and installed normally; a real node_modules install doesn't need it.
+    ssr: {
+      noExternal: ['@good-shepherd-insights/website-components'],
+    },
+    server: {
+      allowedHosts: ['website-template.goodshepherdinsights.com'],
+    },
+  },
 });

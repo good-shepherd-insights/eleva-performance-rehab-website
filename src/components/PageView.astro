@@ -14,27 +14,45 @@ interface Props {
 const { locale, page: content } = Astro.props;
 const site = await getSiteGlobals(locale);
 const title = content.metadata.titleTemplate.replace("{title}", content.title);
-const skipToContentLabel = site.accessibility.skipToContentLabel ?? "";
-// Each curated entry resolves to a Components document; render its sections.
-const globalComponents = site.components
-  .map((entry) => (entry.component && typeof entry.component === "object" ? entry.component.sections ?? [] : []))
-  .filter((sections) => sections.length > 0);
+// Real, standard skip-navigation link text — not CMS content. A prior
+// "accessibility" global group backed this via a CMS field, but 4 of its
+// 5 fields were dead code (never read anywhere in this codebase) and the
+// 5th (this label) never needs to vary per tenant — a literal is simpler
+// and has one less thing that can be left unset.
+const skipToContentLabel = "Skip to main content";
+// Real fix: previously every entry in site.components rendered in one
+// spot, above <main> — nothing could render after the page content at
+// all. Real document-structure requirement: whatever's meant to be a
+// header (e.g. a Navbar block) renders before <main> (with the skip-link,
+// which must be the first focusable element, ahead of it); everything
+// else renders after, via Layout.astro's named "navbar"/"footer" slots —
+// not array order. Adjust the `blockType === "navbar"` check below if
+// this project's real header component uses a different block type.
+const hiddenIds = new Set((content.hiddenGlobalComponents ?? []).map(String));
+const globalSectionEntries = site.components.flatMap((entry, componentIndex) => {
+  const resolved = entry.component;
+  if (!resolved || typeof resolved !== "object") return [];
+  if (hiddenIds.has(String(resolved.id))) return [];
+  return (resolved.sections ?? []).map((section, sectionIndex) => ({ componentIndex, sectionIndex, section }));
+});
+const navbarEntries = globalSectionEntries.filter(({ section }) => section.blockType === "navbar");
+const footerEntries = globalSectionEntries.filter(({ section }) => section.blockType !== "navbar");
 ---
 
-<Layout title={title} description={content.title} locale={locale} favicon={site.brand.favicon.url} image={site.brand.logo.url} imageAlt={site.brand.logoAlt} jsonLd={{}}>
-  <div data-inline-preview-root data-payload-server-url={payloadURL} data-payload-global-slug={payloadGlobalSlug} data-payload-collection="pages" data-payload-id={content.id} data-locale={locale}>
+<Layout title={title} description={content.title} locale={locale} favicon={site.brand.favicon?.url} image={site.brand.logo?.url} imageAlt={site.brand.logoAlt ?? ""} jsonLd={{}}>
+  <Fragment slot="navbar">
     {skipToContentLabel && <a class="skip-link" href="#main-content">{skipToContentLabel}</a>}
-    {globalComponents.map((sections, componentIndex) => (
-      sections.map((section, sectionIndex) => {
-        const prefix = `components.${componentIndex}.component.${sectionIndex}`;
-        if (isSharedSection(section)) return <SectionRenderer section={section} pathPrefix={prefix} />;
-        return (
-          <section data-component={componentIndex} data-section={section.blockType} data-section-index={sectionIndex}>
-            {section.blockType}
-          </section>
-        );
-      })
-    ))}
+    {navbarEntries.map(({ componentIndex, sectionIndex, section }) => {
+      const prefix = `components.${componentIndex}.component.${sectionIndex}`;
+      if (isSharedSection(section)) return <SectionRenderer section={section} pathPrefix={prefix} />;
+      return (
+        <section data-component={componentIndex} data-section={section.blockType} data-section-index={sectionIndex}>
+          {section.blockType}
+        </section>
+      );
+    })}
+  </Fragment>
+  <div data-inline-preview-root data-payload-server-url={payloadURL} data-payload-global-slug={payloadGlobalSlug} data-payload-collection="pages" data-payload-id={content.id} data-locale={locale}>
     <main id="main-content" tabindex="-1">
       {content.sections.map((section, index) => {
         const prefix = `sections.${index}`;
@@ -47,6 +65,17 @@ const globalComponents = site.components
       })}
     </main>
   </div>
+  <Fragment slot="footer">
+    {footerEntries.map(({ componentIndex, sectionIndex, section }) => {
+      const prefix = `components.${componentIndex}.component.${sectionIndex}`;
+      if (isSharedSection(section)) return <SectionRenderer section={section} pathPrefix={prefix} />;
+      return (
+        <section data-component={componentIndex} data-section={section.blockType} data-section-index={sectionIndex}>
+          {section.blockType}
+        </section>
+      );
+    })}
+  </Fragment>
 </Layout>
 
 <InlinePreviewBootstrap collection="pages" id={content.id} initialData={content} initialGlobalData={site} locale={locale} globalSlug={payloadGlobalSlug} />

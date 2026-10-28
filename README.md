@@ -23,11 +23,11 @@ The site has localized homepage routes — `/` for the CMS-configured default
 locale and `/<locale>/` for every other CMS-discovered locale.
 
 Additional CMS-authored pages (`pages` collection, any slug other than
-`home`) render through `src/pages/[locale]/[slug].astro`. **Known gap:**
-there is no top-level `src/pages/[slug].astro`, so a non-home page currently
-resolves only at `/<locale>/<slug>/` prefixed routes — there is no equivalent
-unprefixed default-locale route. Do not silently "fix" this as a side effect
-of an unrelated change; it needs its own scoped ticket.
+`home`) render at `/<slug>` for the default locale through
+`src/pages/[slug].astro`, and at `/<locale>/<slug>/` through
+`src/pages/[locale]/[slug].astro`. **Known gap:** `[locale]/[slug].astro`
+also still generates the default locale's prefixed copy
+(`/<default-locale>/<slug>/`), so default-locale pages exist at two URLs.
 
 ## Architecture
 
@@ -36,7 +36,7 @@ page — home and every other CMS-authored page — for both locales. It walks
 a page's `sections` array and renders each section as a neutral semantic
 `<section>`; the template ships no per-section presentational components
 and no inline-edit/live-sync markup — those attributes belong to the markup
-each project authors. `src/components/PageView.astro` and
+each project authors. `src/pages/[slug].astro` and
 `src/pages/[locale]/[slug].astro`
 are thin entrypoints that fetch one `Page` via `getPage()`/`getPages()` and
 hand it to `PageView.astro`; keep them thin, don't grow page-assembly logic

@@ -1,4 +1,4 @@
-import { ready, subscribe, unsubscribe } from "@payloadcms/live-preview";
+import { ready, isLivePreviewEvent, mergeData } from "@payloadcms/live-preview";
 import type { SiteGlobals, Page } from "./payload";
 
 // Frontend half of the click-to-edit bridge (see the CMS repo's src/admin/InlinePreviewBridge.tsx
@@ -122,25 +122,35 @@ export function initInlinePreview({ serverURL, initialData, locale, globalSlug, 
     });
   };
 
-  const subscription = subscribe<SiteGlobals | Page>({
-    serverURL: resolvedServerURL,
-    initialData,
-    depth: 1,
-    callback: (mergedData) => {
-      liveData = mergedData;
-      patchDOM();
-    },
-  });
+  // @payloadcms/live-preview's subscribe()/handleMessage() share ONE
+  // module-level cache (_payloadLivePreview.previousData) across every
+  // subscribe() call on the page, and each subscribe() call resets it. Two
+  // simultaneous subscriptions here (page + global) clobbered each other's
+  // cache, so a page-edit broadcast could get merged against stale global
+  // data with no `.id`, producing saves to `/api/pages/undefined` (500).
+  // Fixed by driving the merge manually with the package's stateless pieces
+  // (isLivePreviewEvent, mergeData) against our own two local caches
+  // (liveData, globalData) instead of the package's shared one.
+  const handleLivePreviewData = async (event: MessageEvent) => {
+    if (!isLivePreviewEvent(event, resolvedServerURL)) return;
+    const { collectionSlug, globalSlug: incomingGlobalSlug, data } = event.data as {
+      collectionSlug?: string;
+      globalSlug?: string;
+      data?: unknown;
+    };
 
-  const globalSubscription = globalData ? subscribe<SiteGlobals>({
-    serverURL: resolvedServerURL,
-    initialData: globalData,
-    depth: 1,
-    callback: (mergedData) => {
-      globalData = mergedData;
+    if (collection === "pages" && collectionSlug === "pages") {
+      liveData = await mergeData({ serverURL: resolvedServerURL, collectionSlug, depth: 1, incomingData: data, initialData: liveData, locale });
       patchDOM();
-    },
-  }) : undefined;
+    }
+
+    if (globalData && incomingGlobalSlug === globalSlug) {
+      globalData = await mergeData({ serverURL: resolvedServerURL, globalSlug: incomingGlobalSlug, depth: 1, incomingData: data, initialData: globalData, locale });
+      patchDOM();
+    }
+  };
+
+  window.addEventListener("message", handleLivePreviewData);
 
   const handlePayloadPreview = (event: MessageEvent<{ type?: string; collectionSlug?: string; data?: SiteGlobals | Page; globalSlug?: string }>) => {
     const parentWindow = window.parent !== window ? window.parent : window.opener;
@@ -224,8 +234,7 @@ export function initInlinePreview({ serverURL, initialData, locale, globalSlug, 
   ready({ serverURL: resolvedServerURL });
 
   return () => {
-    unsubscribe(subscription);
-    if (globalSubscription) unsubscribe(globalSubscription);
+    window.removeEventListener("message", handleLivePreviewData);
     window.removeEventListener("message", handlePayloadPreview);
   };
 }
