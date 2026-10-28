@@ -13,7 +13,7 @@ export interface Media {
 // A curated entry resolves (depth=2) to the full Components document;
 // `sections` is the renderable content inside it.
 export type CuratedComponent = {
-  component: { id: string | number; sections?: PageSection[] | null } | number | null;
+  component: { id: string | number; sections?: PageSection[] | null } | string | number | null;
 };
 
 function curatedSections(entry: CuratedComponent): PageSection[] {

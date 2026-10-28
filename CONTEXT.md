@@ -33,12 +33,11 @@ The separate Payload CMS supplies:
    and no allow-list exists on this side.
 3. `/` renders the homepage in the CMS-configured default locale.
    `/<locale>/` renders it in every other CMS-discovered locale.
-4. Non-home pages (Payload `pages` collection, any other slug) render
-   through `src/pages/[locale]/[slug].astro`. There is no top-level
-   `src/pages/[slug].astro` — a non-home page currently has no unprefixed
-   default-locale route, only `/<locale>/<slug>/` prefixed ones. This is an
-   existing gap, not a documented design decision; do not assume it is
-   intentional.
+4. Non-home pages (Payload `pages` collection, any other slug) render at
+   `/<slug>` in the default locale through `src/pages/[slug].astro`, and at
+   `/<locale>/<slug>/` through `src/pages/[locale]/[slug].astro`. Known
+   gap: `[locale]/[slug].astro` also still generates the default locale's
+   prefixed copy, so default-locale pages exist at two URLs.
 5. `src/components/PageView.astro` is the shared page assembly for every
    page (home and non-home alike), for both locales. It walks the page's
    `sections` array and renders each section as neutral semantic markup —
@@ -75,8 +74,9 @@ End-to-end data flow, one direction, no branch skipped:
 2. **Request/build enters at a thin route file** — `src/pages/index.astro`
    (default-locale home, resolved from Astro's CMS-derived i18n state),
    `src/pages/[locale]/index.astro` (home, other
-   locales), or `src/pages/[locale]/[slug].astro` (any other `pages`
-   document, `getStaticPaths` enumerated via `getPages()`). Each does one
+   locales), `src/pages/[slug].astro` (any other `pages` document, default
+   locale), or `src/pages/[locale]/[slug].astro` (any other `pages`
+   document, prefixed; `getStaticPaths` enumerated via `getPages()`). Each does one
    thing: resolve which `Page` to fetch, fetch it via `getPage()`, hand it
    to `PageView.astro`. No page-assembly logic belongs in these files.
 3. **`payload.ts` is the only place that talks to Payload.** Two shapes:
